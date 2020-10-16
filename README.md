@@ -7,8 +7,8 @@ undertasker is a Windows tool to launch software and execute terminal commands.
 - [Installer](https://github.com/braycarlson/undertasker/releases/download/0.1/installer.exe)
 
 ## Getting Started
-1. Download and install the undertasker [installer](https://github.com/braycarlson/undertasker/releases/download/0.1/installer.exe)
-2. You can add a path to an executable and/or a terminal command to `command.json`.
+1. Download and install the undertasker [installer](https://github.com/braycarlson/undertasker/releases/download/0.1/undertasker.exe)
+2. You can browse for file(s) to add in undertasker or add a path to an executable and/or a terminal command to `command.json`.
 3. Run `undertasker.exe`.
 
 ## Note
