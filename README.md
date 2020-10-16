@@ -2,7 +2,7 @@
 
 undertasker is a Windows tool to launch software and execute terminal commands.
 
-![undertasker](https://raw.githubusercontent.com/braycarlson/undertasker/master/undertasker/assets/undertasker.png)
+![undertasker](https://raw.githubusercontent.com/braycarlson/undertasker/master/assets/undertasker.png)
 
 ## Download
 
