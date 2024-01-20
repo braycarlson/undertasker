@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+#![windows_subsystem = "windows"]
 
 mod brush;
 mod button;
@@ -27,7 +28,8 @@ const LB_COMMAND: i32 = 1008;
 static mut HINSTANCE: HINSTANCE = null_mut();
 
 
-fn main() {
+fn main()
+{
     hide_console();
     check_or_create_file();
 

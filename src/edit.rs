@@ -10,14 +10,19 @@ use crate::util::{to_wstr};
 static mut LPFN_EDIT_PROC: WNDPROC = None;
 
 
-unsafe extern "system" fn edit_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    match msg {
-        WM_KEYDOWN => {
-            if GetKeyState(VK_CONTROL) as u16 & 0x8000 != 0 && wparam == 'A' as usize {
+unsafe extern "system" fn edit_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT
+{
+    match msg
+    {
+        WM_KEYDOWN =>
+        {
+            if GetKeyState(VK_CONTROL) as u16 & 0x8000 != 0 && wparam == 'A' as usize
+            {
                 SendMessageW(hwnd, EM_SETSEL as u32, 0, -1);
             }
 
-            if GetKeyState(VK_RETURN) as u16 & 0x8000 != 0 {
+            if GetKeyState(VK_RETURN) as u16 & 0x8000 != 0
+            {
                 let parent = GetParent(hwnd);
                 let add = GetDlgItem(parent, BTN_ADD);
                 SendMessageW(add, BM_CLICK, 0, 0);
@@ -30,8 +35,10 @@ unsafe extern "system" fn edit_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lpara
     }
 }
 
-pub fn register_edit() {
-    let mut edit_class = WNDCLASSEXW {
+pub fn register_edit()
+{
+    let mut edit_class = WNDCLASSEXW
+    {
         cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(edit_proc),
@@ -46,7 +53,8 @@ pub fn register_edit() {
         hIconSm: null_mut(),
     };
 
-    unsafe {
+    unsafe
+    {
         GetClassInfoExW(HINSTANCE, to_wstr("EDIT").as_ptr(), &mut edit_class);
         LPFN_EDIT_PROC = edit_class.lpfnWndProc;
 
@@ -59,8 +67,10 @@ pub fn register_edit() {
     };
 }
 
-pub fn unregister_edit() {
-    unsafe {
+pub fn unregister_edit()
+{
+    unsafe
+    {
         UnregisterClassW(
             to_wstr("EDIT").as_ptr(),
             HINSTANCE
@@ -68,8 +78,10 @@ pub fn unregister_edit() {
     };
 }
 
-pub fn create_edit(parent: HWND, id: i32) -> HWND {
-    unsafe {
+pub fn create_edit(parent: HWND, id: i32) -> HWND
+{
+    unsafe
+    {
         let hwnd = CreateWindowExW(
             0,
             to_wstr("EDIT").as_ptr(),

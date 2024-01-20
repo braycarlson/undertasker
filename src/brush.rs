@@ -4,17 +4,20 @@ use winapi::um::wingdi::{RGB, CreatePen, CreateSolidBrush, DeleteObject, PS_SOLI
 
 
 #[allow(dead_code)]
-pub enum Black {
+pub enum Black
+{
     B0, B1
 }
 
 #[allow(dead_code)]
-pub enum Purple {
+pub enum Purple
+{
     P0, P1, P2
 }
 
 #[allow(dead_code)]
-pub enum White {
+pub enum White
+{
     W0
 }
 
@@ -33,8 +36,10 @@ pub static mut PEN_PURPLE_1: HPEN = null_mut();
 pub static mut PEN_WHITE_0: HPEN = null_mut();
 
 
-pub fn load_brushes() {
-    unsafe {
+pub fn load_brushes()
+{
+    unsafe
+    {
         BRUSH_BLACK_0 = CreateSolidBrush(RGB(11, 15, 16));
         BRUSH_BLACK_1 = CreateSolidBrush(RGB(19, 21, 23));
 
@@ -51,8 +56,10 @@ pub fn load_brushes() {
     }
 }
 
-pub fn unload_brushes() {
-    unsafe {
+pub fn unload_brushes()
+{
+    unsafe
+    {
         DeleteObject(BRUSH_BLACK_0 as HGDIOBJ);
         DeleteObject(BRUSH_BLACK_1 as HGDIOBJ);
 

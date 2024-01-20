@@ -12,10 +12,14 @@ use crate::util::to_wstr;
 static mut LPFN_LISTBOX_PROC: WNDPROC = None;
 
 
-unsafe extern "system" fn listbox_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    match msg {
-        WM_KEYDOWN => {
-            if GetKeyState(VK_DELETE) as u16 & 0x8000 != 0 {
+unsafe extern "system" fn listbox_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT
+{
+    match msg
+    {
+        WM_KEYDOWN =>
+        {
+            if GetKeyState(VK_DELETE) as u16 & 0x8000 != 0
+            {
                 delete_item();
             }
         },
@@ -26,8 +30,10 @@ unsafe extern "system" fn listbox_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lp
     return CallWindowProcW(LPFN_LISTBOX_PROC, hwnd, msg, wparam, lparam);
 }
 
-pub fn register_listbox() {
-    let mut listbox_class = WNDCLASSEXW {
+pub fn register_listbox()
+{
+    let mut listbox_class = WNDCLASSEXW
+    {
         cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(listbox_proc),
@@ -42,7 +48,8 @@ pub fn register_listbox() {
         hIconSm: null_mut(),
     };
 
-    unsafe {
+    unsafe
+    {
         GetClassInfoExW(HINSTANCE, to_wstr("LISTBOX").as_ptr(), &mut listbox_class);
         LPFN_LISTBOX_PROC = listbox_class.lpfnWndProc;
 
@@ -55,8 +62,10 @@ pub fn register_listbox() {
     };
 }
 
-pub fn unregister_listbox() {
-    unsafe {
+pub fn unregister_listbox()
+{
+    unsafe
+    {
         UnregisterClassW(
             to_wstr("LISTBOX").as_ptr(),
             HINSTANCE
@@ -64,8 +73,10 @@ pub fn unregister_listbox() {
     };
 }
 
-pub fn create_listbox(parent: HWND, id: i32) -> HWND {
-    unsafe {
+pub fn create_listbox(parent: HWND, id: i32) -> HWND
+{
+    unsafe
+    {
         let hwnd = CreateWindowExW(
             0,
             to_wstr("LISTBOX").as_ptr(),

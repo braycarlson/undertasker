@@ -7,7 +7,8 @@ use crate::util::to_wstr;
 
 pub static mut FONT: HFONT = null_mut();
 
-pub unsafe fn load_fonts() {
+pub unsafe fn load_fonts()
+{
     FONT = CreateFontW(
         18,
         0,
@@ -26,6 +27,7 @@ pub unsafe fn load_fonts() {
     );
 }
 
-pub unsafe fn unload_fonts() {
+pub unsafe fn unload_fonts()
+{
     DeleteObject(FONT as HGDIOBJ);
 }

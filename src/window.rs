@@ -23,16 +23,19 @@ use crate::util::{from_wstr, get_path, register_custom_classes, path_exists, to_
 
 
 #[derive(PartialEq, PartialOrd, Serialize, Deserialize, Debug)]
-pub struct Command {
+pub struct Command
+{
     pub file: Vec<String>,
     pub windows: Vec<String>,
     pub terminal: Vec<String>
 }
 
-unsafe fn run() {
+unsafe fn run()
+{
     let commands = get_commands();
 
-    if commands.file.is_empty() && commands.windows.is_empty() && commands.terminal.is_empty() {
+    if commands.file.is_empty() && commands.windows.is_empty() && commands.terminal.is_empty()
+    {
         MessageBoxW(
              null_mut(),
              to_wstr("Please add a command.").as_ptr(),
@@ -46,7 +49,8 @@ unsafe fn run() {
     execute(commands);
 }
 
-unsafe fn get_file() -> Option<Command> {
+unsafe fn get_file() -> Option<Command>
+{
     let path = get_path();
 
     let file = OpenOptions::new()
@@ -60,7 +64,8 @@ unsafe fn get_file() -> Option<Command> {
     commands
 }
 
-unsafe fn get_commands() -> Command {
+unsafe fn get_commands() -> Command
+{
     let buffer: [u16; MAX_PATH + 1] = [0; MAX_PATH + 1];
     let mut file: Vec<String> = Vec::new();
     let mut terminal: Vec<String> = Vec::new();
@@ -74,17 +79,24 @@ unsafe fn get_commands() -> Command {
     let listbox = GetDlgItem(hwnd, LB_COMMAND);
     let count = SendMessageW(listbox, LB_GETCOUNT, 0, 0);
 
-    for index in 0..count {
+    for index in 0..count
+    {
         SendMessageW(listbox, LB_GETTEXT, index as WPARAM, buffer.as_ptr() as LPARAM);
 
         let command = from_wstr(&buffer);
 
-        if let Some(command) = command {
-            if path_exists(&command) {
+        if let Some(command) = command
+        {
+            if path_exists(&command)
+            {
                 file.push(command);
-            } else if command.starts_with("start") {
+            }
+            else if command.starts_with("start")
+            {
                 windows.push(command);
-            } else {
+            }
+            else
+            {
                 terminal.push(command);
             }
         }
@@ -108,7 +120,8 @@ unsafe fn get_commands() -> Command {
         )
     );
 
-    let commands = Command {
+    let commands = Command
+    {
         file: file,
         windows: windows,
         terminal: terminal
@@ -117,7 +130,8 @@ unsafe fn get_commands() -> Command {
     commands
 }
 
-unsafe fn save_file() {
+unsafe fn save_file()
+{
     let commands = get_commands();
     let path = get_path();
 
@@ -130,8 +144,10 @@ unsafe fn save_file() {
     serde_json::to_writer_pretty(file, &commands).expect("File could not be saved.");
 }
 
-fn add_item(item: Vec::<u16>) {
-    unsafe {
+fn add_item(item: Vec::<u16>)
+{
+    unsafe
+    {
         let value = item.as_ptr();
 
         let hwnd = FindWindowW(
@@ -147,8 +163,10 @@ fn add_item(item: Vec::<u16>) {
     }
 }
 
-pub fn delete_item() {
-    unsafe {
+pub fn delete_item()
+{
+    unsafe
+    {
         let hwnd = FindWindowW(
             to_wstr("WINDOW").as_ptr(),
             to_wstr("undertasker").as_ptr()
@@ -157,7 +175,8 @@ pub fn delete_item() {
         let listbox = GetDlgItem(hwnd, LB_COMMAND);
         let count = SendMessageW(listbox, LB_GETCOUNT, 0, 0);
 
-        if count == 0 {
+        if count == 0
+        {
             return
         }
 
@@ -165,32 +184,39 @@ pub fn delete_item() {
         SendMessageW(listbox, LB_DELETESTRING, index as WPARAM, 0);
         SetFocus(listbox);
 
-        if index != 0 {
+        if index != 0
+        {
             index = index - 1;
             SendMessageW(listbox, LB_SETCURSEL, index as WPARAM, 0);
-        } else {
+        }
+        else {
             SendMessageW(listbox, LB_SETCURSEL, index as WPARAM, 0);
         }
     }
 }
 
-unsafe fn populate_listbox() {
+unsafe fn populate_listbox()
+{
     let commands = get_file();
 
-    if let Some(commands) = commands {
-        for command in commands.file {
+    if let Some(commands) = commands
+    {
+        for command in commands.file
+        {
             add_item(
                 to_utf16(&command)
             );
         }
 
-        for command in commands.windows {
+        for command in commands.windows
+        {
             add_item(
                 to_utf16(&command)
             );
         }
 
-        for command in commands.terminal {
+        for command in commands.terminal
+        {
             add_item(
                 to_utf16(&command)
             );
@@ -198,14 +224,19 @@ unsafe fn populate_listbox() {
     }
 }
 
-pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    match msg {
-        WM_CLOSE => {
+pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT
+{
+    match msg
+    {
+        WM_CLOSE =>
+        {
             let commands = get_commands();
             let content = get_file();
 
-            if let Some(content) = content {
-                if commands != content {
+            if let Some(content) = content
+            {
+                if commands != content
+                {
                     let prompt = MessageBoxW(
                          null_mut(),
                          to_wstr("Do you want to save changes?").as_ptr(),
@@ -213,7 +244,8 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
                          MB_ICONINFORMATION | MB_YESNO | MB_APPLMODAL,
                      );
 
-                    if prompt == 6 {
+                    if prompt == 6
+                    {
                         save_file();
                     }
                 }
@@ -226,20 +258,26 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
             0 as LRESULT
         },
 
-        WM_COMMAND => {
-            match wparam as i32 {
-                BTN_ADD => {
+        WM_COMMAND =>
+        {
+            match wparam as i32
+            {
+                BTN_ADD =>
+                {
                     let edit = GetDlgItem(hwnd, EDIT_COMMAND);
                     let length = GetWindowTextLengthW(edit);
                     let mut text: Vec<u16> = vec![0; (length+1) as usize];
 
                     let listbox = GetDlgItem(hwnd, LB_COMMAND);
 
-                    if GetWindowTextW(edit, text.as_mut_ptr() as LPWSTR, length + 1) != 0 {
+                    if GetWindowTextW(edit, text.as_mut_ptr() as LPWSTR, length + 1) != 0
+                    {
                         add_item(text);
                         SetWindowTextW(edit, null_mut());
                         InvalidateRect(listbox, null_mut(), FALSE);
-                    } else {
+                    }
+                    else
+                    {
                         MessageBoxW(
                              null_mut(),
                              to_wstr("Please enter a command.").as_ptr(),
@@ -251,11 +289,14 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
                     SetFocus(edit);
                 },
 
-                BTN_BROWSE => {
-                    thread::spawn(|| {
+                BTN_BROWSE =>
+                {
+                    thread::spawn(||
+                    {
                         let mut buffer = vec![0u16; 1024];
 
-                        let mut filename = OPENFILENAMEW {
+                        let mut filename = OPENFILENAMEW
+                        {
                             lStructSize: std::mem::size_of::<OPENFILENAMEW>() as u32,
                             hwndOwner: null_mut(),
                             hInstance: HINSTANCE,
@@ -283,8 +324,10 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
 
                         let result = GetOpenFileNameW(&mut filename);
 
-                        if result != 0 {
-                            if let Some(path) = from_wstr(&buffer) {
+                        if result != 0
+                        {
+                            if let Some(path) = from_wstr(&buffer)
+                            {
                                 add_item(
                                     to_wstr(&path)
                                 );
@@ -293,15 +336,19 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
                     });
                 },
 
-                BTN_REMOVE => {
+                BTN_REMOVE =>
+                {
                     let listbox = GetDlgItem(hwnd, LB_COMMAND);
                     let count = SendMessageW(listbox, LB_GETCOUNT, 0, 0);
 
-                    if count != 0 {
+                    if count != 0
+                    {
                         let mut rect = std::mem::MaybeUninit::uninit().assume_init();
                         GetClientRect(hwnd, &mut rect);
                         delete_item();
-                    } else {
+                    }
+                    else
+                    {
                         MessageBoxW(
                              null_mut(),
                              to_wstr("No command to remove.").as_ptr(),
@@ -311,13 +358,16 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
                     }
                 },
 
-                BTN_RUN => {
-                    thread::spawn(|| {
+                BTN_RUN =>
+                {
+                    thread::spawn(||
+                    {
                         run();
                     });
                 },
 
-                BTN_SAVE => {
+                BTN_SAVE =>
+                {
                     save_file();
                 },
 
@@ -326,7 +376,8 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
             0 as LRESULT
         },
 
-        WM_CTLCOLOREDIT => {
+        WM_CTLCOLOREDIT =>
+        {
             let hdc = wparam as HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
             SetTextColor(hdc, RGB(216, 211, 225));
@@ -334,22 +385,29 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
             return BRUSH_BLACK_1 as isize;
         },
 
-        WM_CTLCOLORLISTBOX => {
+        WM_CTLCOLORLISTBOX =>
+        {
             let hdc = wparam as HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
 
             return BRUSH_BLACK_1 as isize;
         },
 
-        WM_DRAWITEM => {
-            match wparam as i32 {
-                LB_COMMAND => {
+        WM_DRAWITEM =>
+        {
+            match wparam as i32
+            {
+                LB_COMMAND =>
+                {
                     let listbox = GetDlgItem(hwnd, LB_COMMAND);
                     let count = SendMessageW(listbox, LB_GETCOUNT, 0, 0);
 
-                    if count == 0 {
+                    if count == 0
+                    {
                         SendMessageW(listbox, LB_SETSEL, FALSE as WPARAM, -1);
-                    } else {
+                    }
+                    else
+                    {
                         let mut pdis = *(lparam as LPDRAWITEMSTRUCT);
                         let buffer: [u16; MAX_PATH + 1] = [0; MAX_PATH + 1];
 
@@ -362,17 +420,21 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
 
                         let active = GetFocus();
 
-                        if pdis.itemState & ODA_DRAWENTIRE != 0 || pdis.itemState & ODA_SELECT != 0 {
+                        if pdis.itemState & ODA_DRAWENTIRE != 0 || pdis.itemState & ODA_SELECT != 0
+                        {
                             FillRect(pdis.hDC, &mut pdis.rcItem, BRUSH_BLACK_1);
                             SetBkColor(pdis.hDC, RGB(229, 225, 222));
                             SetTextColor(pdis.hDC, RGB(216, 211, 225));
                         }
 
-                        if pdis.itemState & ODS_FOCUS != 0 || active != listbox && pdis.itemState & ODS_SELECTED != 0 {
+                        if pdis.itemState & ODS_FOCUS != 0 || active != listbox && pdis.itemState & ODS_SELECTED != 0
+                        {
                             FillRect(pdis.hDC, &mut pdis.rcItem, BRUSH_PURPLE_0);
                             SetBkMode(pdis.hDC, TRANSPARENT as i32);
                             SetTextColor(pdis.hDC, RGB(229, 225, 222));
-                        } else {
+                        }
+                        else
+                        {
                             FillRect(pdis.hDC, &mut pdis.rcItem, BRUSH_BLACK_1);
                             SetBkColor(pdis.hDC, RGB(98, 97, 171));
                             SetTextColor(pdis.hDC, RGB(229, 225, 222));
@@ -388,7 +450,8 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
                             DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOFULLWIDTHCHARBREAK | DT_NOCLIP
                         );
 
-                        if pdis.itemState == ODS_FOCUS {
+                        if pdis.itemState == ODS_FOCUS
+                        {
                             DrawFocusRect(pdis.hDC, &pdis.rcItem);
                         }
                     }
@@ -399,7 +462,8 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
             0 as LRESULT
         },
 
-        WM_CREATE => {
+        WM_CREATE =>
+        {
             let icon = LoadIconW(
                 HINSTANCE,
                 MAKEINTRESOURCEW(1000)
@@ -508,15 +572,18 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
             0 as LRESULT
         },
 
-        WM_DESTROY => {
+        WM_DESTROY =>
+        {
             PostQuitMessage(0);
             0 as LRESULT
         },
 
-        WM_NCHITTEST => {
+        WM_NCHITTEST =>
+        {
             let mut hit = DefWindowProcW(hwnd, msg, wparam, lparam);
 
-            if hit == HTCLIENT {
+            if hit == HTCLIENT
+            {
                 hit = HTCAPTION;
             }
 
@@ -527,13 +594,16 @@ pub unsafe extern "system" fn window_proc(hwnd: HWND, msg: UINT, wparam: WPARAM,
     }
 }
 
-pub fn register_window() {
-    unsafe {
+pub fn register_window()
+{
+    unsafe
+    {
         HINSTANCE = GetModuleHandleW(null());
         load_fonts();
         load_brushes();
 
-        let wndclassex = WNDCLASSEXW {
+        let wndclassex = WNDCLASSEXW
+        {
             cbSize: std::mem::size_of::<WNDCLASSEXW>() as UINT,
             style: CS_HREDRAW | CS_VREDRAW,
             lpfnWndProc: Some(window_proc),
@@ -550,7 +620,8 @@ pub fn register_window() {
 
         let atom = RegisterClassExW(&wndclassex);
 
-        if atom == 0 {
+        if atom == 0
+        {
             MessageBoxW(
                 null_mut(),
                 to_wstr("This program requires Windows NT!").as_ptr(),
@@ -563,8 +634,10 @@ pub fn register_window() {
     }
 }
 
-pub fn create_window() {
-    unsafe {
+pub fn create_window()
+{
+    unsafe
+    {
         let desktop = GetDesktopWindow();
 
         let mut rect = std::mem::MaybeUninit::uninit().assume_init();
@@ -585,30 +658,40 @@ pub fn create_window() {
             null_mut()
         );
 
-        if hwnd.is_null() {
+        if hwnd.is_null()
+        {
             return;
         }
 
         ShowWindow(hwnd, SW_SHOW);
 
-        if UpdateWindow(hwnd) == 0 {
+        if UpdateWindow(hwnd) == 0
+        {
             return;
         }
     }
 }
 
-pub fn message_loop() -> WPARAM {
-    unsafe {
+pub fn message_loop() -> WPARAM
+{
+    unsafe
+    {
         let mut msg: MSG = std::mem::MaybeUninit::uninit().assume_init();
 
-        loop {
+        loop
+        {
             let queue = GetMessageW(&mut msg, null_mut(), 0, 0);
 
-            if queue == -1 {
+            if queue == -1
+            {
                 return 0;
-            } else if queue == 0 {
+            }
+            else if queue == 0
+            {
                 break;
-            } else {
+            }
+            else
+            {
                 TranslateMessage(&msg);
                 DispatchMessageW(&msg);
             }

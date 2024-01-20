@@ -13,13 +13,15 @@ use crate::font::FONT;
 use crate::HINSTANCE;
 use crate::util::to_wstr;
 
-enum ButtonState {
+enum ButtonState
+{
     Idle,
     Hover,
     Active,
 }
 
-struct ButtonData {
+struct ButtonData
+{
     state: ButtonState,
     colour: Purple,
 }
@@ -29,14 +31,17 @@ static mut LPFN_BUTTON_PROC: WNDPROC = None;
 static mut CB_WND_EXTRA: i32 = 0;
 
 
-fn paint(hwnd: HWND, hdc: HDC, rect: &mut RECT, data: &ButtonData) {
-    unsafe {
+fn paint(hwnd: HWND, hdc: HDC, rect: &mut RECT, data: &ButtonData)
+{
+    unsafe
+    {
         let hdc_mem = CreateCompatibleDC(hdc);
         let hbm_mem = CreateCompatibleBitmap(hdc, rect.right - rect.left, rect.bottom - rect.top);
 
         let hbm_old = SelectObject(hdc_mem, hbm_mem as HGDIOBJ);
 
-        FillRect(hdc_mem, rect, match data.state {
+        FillRect(hdc_mem, rect, match data.state
+        {
             ButtonState::Idle => BRUSH_PURPLE_0,
             ButtonState::Hover => BRUSH_PURPLE_1,
             ButtonState::Active => BRUSH_PURPLE_1
@@ -68,37 +73,46 @@ fn paint(hwnd: HWND, hdc: HDC, rect: &mut RECT, data: &ButtonData) {
     }
 }
 
-unsafe extern "system" fn button_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+unsafe extern "system" fn button_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lparam: LPARAM) -> LRESULT
+{
     let ptr = GetWindowLongPtrW(hwnd, CB_WND_EXTRA) as *mut u8;
     let button_data = ptr as *mut ButtonData;
 
-    match msg {
-        WM_NCCREATE => {
-            if CallWindowProcW(LPFN_BUTTON_PROC, hwnd, msg, wparam, lparam) == 0 {
+    match msg
+    {
+        WM_NCCREATE =>
+        {
+            if CallWindowProcW(LPFN_BUTTON_PROC, hwnd, msg, wparam, lparam) == 0
+            {
                 return FALSE as isize;
             }
 
             let layout = Layout::new::<ButtonData>();
             let new_ptr = alloc::alloc(layout);
 
-            if new_ptr as isize == 0 {
+            if new_ptr as isize == 0
+            {
                 return FALSE as isize;
             }
 
-            *(new_ptr as *mut ButtonData) = ButtonData {
+            *(new_ptr as *mut ButtonData) = ButtonData
+            {
                 state: ButtonState::Idle,
                 colour: Purple::P0
             };
 
-            if SetWindowLongPtrW(hwnd, CB_WND_EXTRA, new_ptr as isize) != 0 {
+            if SetWindowLongPtrW(hwnd, CB_WND_EXTRA, new_ptr as isize) != 0
+            {
                 return FALSE as isize;
             }
 
             return TRUE as isize;
         },
 
-        WM_NCDESTROY => {
-            if ptr as isize != 0 {
+        WM_NCDESTROY =>
+        {
+            if ptr as isize != 0
+            {
                 let layout = Layout::new::<ButtonData>();
                 alloc::dealloc(ptr, layout)
             }
@@ -106,14 +120,17 @@ unsafe extern "system" fn button_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lpa
             return 0;
         },
 
-        WM_ERASEBKGND => {
+        WM_ERASEBKGND =>
+        {
             return 1;
         },
 
-        WM_PAINT => {
+        WM_PAINT =>
+        {
             InvalidateRect(hwnd, null_mut(), TRUE);
 
-            let mut ps: PAINTSTRUCT = PAINTSTRUCT {
+            let mut ps: PAINTSTRUCT = PAINTSTRUCT
+            {
                 hdc: null_mut(),
                 fErase: FALSE,
                 rcPaint: std::mem::MaybeUninit::uninit().assume_init(),
@@ -129,7 +146,8 @@ unsafe extern "system" fn button_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lpa
             return 0;
         },
 
-        WM_PRINTCLIENT => {
+        WM_PRINTCLIENT =>
+        {
             let mut rect: RECT = std::mem::MaybeUninit::uninit().assume_init();
             GetClientRect(hwnd, &mut rect);
             paint(hwnd, wparam as HDC, &mut rect, &*button_data);
@@ -137,13 +155,16 @@ unsafe extern "system" fn button_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lpa
             return 0;
         },
 
-        WM_MOUSEMOVE => {
-            let position = POINT {
+        WM_MOUSEMOVE =>
+        {
+            let position = POINT
+            {
                 x: GET_X_LPARAM(lparam),
                 y: GET_Y_LPARAM(lparam)
             };
 
-            let mut track = TRACKMOUSEEVENT {
+            let mut track = TRACKMOUSEEVENT
+            {
                 cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
                 dwFlags: TME_LEAVE,
                 hwndTrack: hwnd,
@@ -155,47 +176,57 @@ unsafe extern "system" fn button_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lpa
             let mut rect = std::mem::MaybeUninit::uninit().assume_init();
             GetClientRect(hwnd, &mut rect);
 
-            (*button_data).state = if PtInRect(&rect, position) != 0 {
-                match (*button_data).state {
+            (*button_data).state = if PtInRect(&rect, position) != 0
+            {
+                match (*button_data).state
+                {
                     ButtonState::Idle => ButtonState::Hover,
                     ButtonState::Hover => ButtonState::Hover,
                     ButtonState::Active => ButtonState::Active,
                 }
             }
-            else {
+            else
+            {
                 ButtonState::Idle
             };
 
             InvalidateRect(hwnd, &rect, FALSE);
         },
 
-        WM_KILLFOCUS => {
+        WM_KILLFOCUS =>
+        {
             (*button_data).state = ButtonState::Idle;
             InvalidateRect(hwnd, null_mut(), FALSE);
         },
 
-        WM_SETFOCUS => {
+        WM_SETFOCUS =>
+        {
             (*button_data).state = ButtonState::Idle;
             InvalidateRect(hwnd, null_mut(), FALSE);
         },
 
-        WM_MOUSELEAVE => {
+        WM_MOUSELEAVE =>
+        {
             (*button_data).state = ButtonState::Idle;
             InvalidateRect(hwnd, null_mut(), FALSE);
         },
 
-        WM_LBUTTONDBLCLK => {
+        WM_LBUTTONDBLCLK =>
+        {
             (*button_data).state = ButtonState::Active;
             InvalidateRect(hwnd, null_mut(), FALSE);
         },
 
-        WM_LBUTTONDOWN => {
+        WM_LBUTTONDOWN =>
+        {
             (*button_data).state = ButtonState::Active;
             InvalidateRect(hwnd, null_mut(), FALSE);
         },
 
-        WM_LBUTTONUP => {
-            let position = POINT {
+        WM_LBUTTONUP =>
+        {
+            let position = POINT
+            {
                 x: GET_X_LPARAM(lparam),
                 y: GET_Y_LPARAM(lparam)
             };
@@ -213,8 +244,10 @@ unsafe extern "system" fn button_proc(hwnd: HWND, msg: UINT, wparam: WPARAM, lpa
     return CallWindowProcW(LPFN_BUTTON_PROC, hwnd, msg, wparam, lparam);
 }
 
-pub fn register_button() {
-    let mut button_class = WNDCLASSEXW {
+pub fn register_button()
+{
+    let mut button_class = WNDCLASSEXW
+    {
         cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
         style: CS_HREDRAW | CS_VREDRAW,
         lpfnWndProc: Some(button_proc),
@@ -229,7 +262,8 @@ pub fn register_button() {
         hIconSm: null_mut(),
     };
 
-    unsafe {
+    unsafe
+    {
         GetClassInfoExW(HINSTANCE, to_wstr("BUTTON").as_ptr(), &mut button_class);
         CB_WND_EXTRA = button_class.cbWndExtra;
         LPFN_BUTTON_PROC = button_class.lpfnWndProc;
@@ -244,8 +278,10 @@ pub fn register_button() {
     };
 }
 
-pub fn unregister_button() {
-    unsafe {
+pub fn unregister_button()
+{
+    unsafe
+    {
         UnregisterClassW(
             to_wstr(BUTTON_CLASS_NAME).as_ptr(),
             HINSTANCE
@@ -253,8 +289,10 @@ pub fn unregister_button() {
     };
 }
 
-pub fn create_button(parent: HWND, id: i32, text: &str) -> HWND {
-    unsafe {
+pub fn create_button(parent: HWND, id: i32, text: &str) -> HWND
+{
+    unsafe
+    {
         let hwnd = CreateWindowExW(
             0,
             to_wstr(BUTTON_CLASS_NAME).as_ptr(),
@@ -271,7 +309,8 @@ pub fn create_button(parent: HWND, id: i32, text: &str) -> HWND {
         let button_data = ptr as *mut ButtonData;
         (*button_data).colour = Purple::P0;
 
-        if SetWindowLongPtrW(hwnd, CB_WND_EXTRA, ptr as isize) == 0 {
+        if SetWindowLongPtrW(hwnd, CB_WND_EXTRA, ptr as isize) == 0
+        {
             eprintln!("Failed to set colour of button: {}", GetLastError());
         }
 
