@@ -18,7 +18,7 @@ undertasker is a Windows tool to launch software and execute terminal commands.
 
 ## Examples of Commands
 
-### **Software**
+### **Executable**
 `C:\Program Files (x86)\Steam\Steam.exe`
 
 ### **Windows Settings**
