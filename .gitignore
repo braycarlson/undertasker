@@ -11,5 +11,4 @@ Cargo.lock
 
 # undertasker
 target/
-ui/
 *.iss
