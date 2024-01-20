@@ -10,7 +10,5 @@ Cargo.lock
 **/*.rs.bk
 
 # undertasker
-non-gui/
 target/
-ui/
 *.iss
