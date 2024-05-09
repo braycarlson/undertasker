@@ -104,18 +104,24 @@ impl Commands {
                 windows: Vec::new(),
                 terminal: Vec::new(),
             };
-            commands.to_disk(path.as_ref().to_path_buf())?;
+            commands.to_file(path.as_ref().to_path_buf())?;
             Ok(commands)
         } else {
             let json = fs::read_to_string(path)
                 .map_err(|e| io::Error::new(e.kind(), format!("Failed to read file: {}", e)))?;
 
-            serde_json::from_str(&json)
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Failed to parse JSON: {}", e)))
+            let mut commands: Commands = serde_json::from_str(&json)
+                .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Failed to parse JSON: {}", e)))?;
+
+            commands.file.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
+            commands.windows.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
+            commands.terminal.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
+
+            Ok(commands)
         }
     }
 
-    pub fn to_disk(&self, path: PathBuf) -> io::Result<()> {
+    pub fn to_file(&self, path: PathBuf) -> io::Result<()> {
         let json = serde_json::to_string_pretty(self)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("Failed to serialize JSON: {}", e)))?;
 
