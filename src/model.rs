@@ -1,3 +1,4 @@
+use std::string;
 use slint::{StandardListViewItem};
 
 #[derive(Clone, Default)]
@@ -8,6 +9,15 @@ pub struct CustomListViewItem {
 
 impl From<&str> for CustomListViewItem {
     fn from(string: &str) -> Self {
+        CustomListViewItem {
+            item: StandardListViewItem::from(slint::SharedString::from(string)),
+            quiet: false,
+        }
+    }
+}
+
+impl From<&string::String> for CustomListViewItem {
+    fn from(string: &std::string::String) -> Self {
         CustomListViewItem {
             item: StandardListViewItem::from(slint::SharedString::from(string)),
             quiet: false,

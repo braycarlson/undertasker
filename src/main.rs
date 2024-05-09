@@ -17,7 +17,6 @@ use winit::dpi::PhysicalPosition;
 use crate::command::Commands;
 use crate::model::CustomListViewItem;
 
-#[allow(dead_code)]
 pub struct Undertasker {
     app: Rc<App>,
     model: Rc<RefCell<ModelRc<StandardListViewItem>>>,
@@ -45,8 +44,14 @@ impl Undertasker {
     }
 
     fn add(&self, path: slint::SharedString) {
+        let item = CustomListViewItem::from(path.clone());
+
+        if let Some(model) = self.state.borrow().as_any().downcast_ref::<VecModel<CustomListViewItem>>() {
+            model.push(item.clone());
+        }
+
         if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            let item = StandardListViewItem::from(path);
+            let item = item.into();
             model.push(item);
 
             self.app.set_is_not_empty(model.row_count() > 0);
@@ -63,9 +68,15 @@ impl Undertasker {
     }
 
     fn browse(&self) {
-        if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            if let Some(file) = FileDialog::new().pick_file() {
-                if let Some(path) = file.to_str() {
+        if let Some(file) = FileDialog::new().pick_file() {
+            if let Some(path) = file.to_str() {
+                let item = CustomListViewItem::from(path);
+
+                if let Some(model) = self.state.borrow().as_any().downcast_ref::<VecModel<CustomListViewItem>>() {
+                    model.push(item.clone());
+                }
+
+                if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
                     let item = StandardListViewItem::from(path);
                     model.push(item);
 
@@ -87,37 +98,77 @@ impl Undertasker {
     fn load(&self) {
         let commands = Commands::from_file(&self.path).unwrap();
 
-        for path in commands.file().iter().chain(commands.windows().iter()).chain(commands.terminal().iter()) {
+        for command in commands.file() {
+            let item = CustomListViewItem::from(command);
+
+            if let Some(model) = self.state.borrow().as_any().downcast_ref::<VecModel<CustomListViewItem>>() {
+                let item = CustomListViewItem::from(slint::SharedString::from(command));
+                model.push(item);
+            }
+
             if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-                let item = StandardListViewItem::from(slint::SharedString::from(path.as_str()));
+                model.push(item.into());
+            }
+        }
+
+        for command in commands.windows() {
+            let item = CustomListViewItem::from(command);
+
+            if let Some(state) = self.state.borrow().as_any().downcast_ref::<VecModel<CustomListViewItem>>() {
+                let item = CustomListViewItem::from(slint::SharedString::from(command));
+                state.push(item);
+            }
+
+            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+                model.push(item.into());
+            }
+        }
+
+        for (command, quiet) in commands.terminal() {
+            let command = slint::SharedString::from(command);
+
+            if let Some(model) = self.state.borrow().as_any().downcast_ref::<VecModel<CustomListViewItem>>() {
+                let item = CustomListViewItem {
+                    item: StandardListViewItem::from(command.clone()),
+                    quiet: *quiet,
+                };
+
+                model.push(item);
+            }
+
+            let item = StandardListViewItem::from(command);
+
+            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
                 model.push(item);
             }
         }
     }
 
     fn remove(&self) {
-        if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            let index = self.app.get_index();
+        let index = self.app.get_index();
 
-            if index >= 0 {
+        if index >= 0 {
+            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
                 model.remove(index as usize);
+                self.app.set_is_not_empty(model.row_count() > 0);
             }
 
-            self.app.set_is_not_empty(model.row_count() > 0);
+            if let Some(model) = self.state.borrow().as_any().downcast_ref::<VecModel<CustomListViewItem>>() {
+                model.remove(index as usize);
+            }
         }
     }
 
     fn execute(&self) {
-       if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-           let commands = command::Commands::from_ui(model);
+       if let Some(model) = &self.state.borrow().as_any().downcast_ref::<VecModel<CustomListViewItem>>() {
+           let commands = command::Commands::from_state(model);
            commands.execute();
        }
     }
 
     fn save(&self) {
-        if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            let commands = command::Commands::from_ui(model);
-
+        if let Some(model) = &self.state.borrow().as_any().downcast_ref::<VecModel<CustomListViewItem>>() {
+            let commands = command::Commands::from_state(model);
             let result = commands.to_file(self.path.clone());
 
             if result.is_ok() {
@@ -166,7 +217,7 @@ impl Undertasker {
             .as_any().downcast_ref::<VecModel<StandardListViewItem>>()
             .map_or(true, |x| x.row_count() == 0);
 
-        let _ = &self.app.set_is_not_empty(!is_empty);
+        self.app.set_is_not_empty(!is_empty);
 
         self.app.run()
     }
