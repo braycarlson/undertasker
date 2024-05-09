@@ -45,48 +45,40 @@ impl Undertasker {
     }
 
     fn add(&self, path: slint::SharedString) {
-        let handle = Rc::downgrade(&self.app);
+        if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+            let item = StandardListViewItem::from(path);
+            model.push(item);
 
-        if let Some(app) = handle.upgrade() {
-            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-                let item = StandardListViewItem::from(path);
-                model.push(item);
+            self.app.set_is_not_empty(model.row_count() > 0);
 
-                app.set_is_not_empty(model.row_count() > 0);
+            let index = model.row_count() - 1;
+            self.app.set_index(index as i32);
 
-                let index = model.row_count() - 1;
-                app.set_index(index as i32);
+            let height = 30;
+            let position = (index * height) as f32;
+            self.app.set_scroll(-position);
 
-                let height = 30;
-                let position = (index * height) as f32;
-                app.set_scroll(-position);
-
-                app.set_path(String::new().into());
-            }
+            self.app.set_path(String::new().into());
         }
     }
 
     fn browse(&self) {
-        let handle = Rc::downgrade(&self.app);
+        if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+            if let Some(file) = FileDialog::new().pick_file() {
+                if let Some(path) = file.to_str() {
+                    let item = StandardListViewItem::from(path);
+                    model.push(item);
 
-        if let Some(app) = handle.upgrade() {
-            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-                if let Some(file) = FileDialog::new().pick_file() {
-                    if let Some(path) = file.to_str() {
-                        let item = StandardListViewItem::from(path);
-                        model.push(item);
+                    self.app.set_is_not_empty(model.row_count() > 0);
 
-                        app.set_is_not_empty(model.row_count() > 0);
+                    let index = model.row_count() - 1;
+                    self.app.set_index(index as i32);
 
-                        let index = model.row_count() - 1;
-                        app.set_index(index as i32);
+                    let height = 30;
+                    let position = (index * height) as f32;
+                    self.app.set_scroll(-position);
 
-                        let height = 30;
-                        let position = (index * height) as f32;
-                        app.set_scroll(-position);
-
-                        app.set_path(String::new().into());
-                    }
+                    self.app.set_path(String::new().into());
                 }
             }
         }
@@ -104,18 +96,14 @@ impl Undertasker {
     }
 
     fn remove(&self) {
-        let handle = Rc::downgrade(&self.app);
+        if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+            let index = self.app.get_index();
 
-        if let Some(app) = handle.upgrade() {
-            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-                let index = app.get_index();
-
-                if index >= 0 {
-                    model.remove(index as usize);
-                }
-
-                app.set_is_not_empty(model.row_count() > 0);
+            if index >= 0 {
+                model.remove(index as usize);
             }
+
+            self.app.set_is_not_empty(model.row_count() > 0);
         }
     }
 
@@ -127,19 +115,15 @@ impl Undertasker {
     }
 
     fn save(&self) {
-        let handle = Rc::downgrade(&self.app);
+        if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+            let commands = command::Commands::from_ui(model);
 
-        if let Some(app) = handle.upgrade() {
-            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-                let commands = command::Commands::from_ui(model);
+            let result = commands.to_file(self.path.clone());
 
-                let result = commands.to_file(self.path.clone());
-
-                if result.is_ok() {
-                    app.invoke_show_success();
-                } else {
-                    app.invoke_show_error();
-                }
+            if result.is_ok() {
+                self.app.invoke_show_success();
+            } else {
+                self.app.invoke_show_error();
             }
         }
     }
