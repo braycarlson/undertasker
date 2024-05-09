@@ -3,79 +3,55 @@
 slint::include_modules!();
 
 mod command;
+mod model;
 
 use i_slint_backend_winit::WinitWindowAccessor;
 use rfd::FileDialog;
-use slint::{Model, ModelRc, StandardListViewItem, VecModel, Window};
+use slint::{Model, ModelRc, StandardListViewItem, VecModel};
 use std::cell::RefCell;
 use std::env;
+use std::path::PathBuf;
 use std::rc::Rc;
 use winit::dpi::PhysicalPosition;
 
 use crate::command::Commands;
+use crate::model::CustomListViewItem;
 
+#[allow(dead_code)]
+pub struct Undertasker {
+    app: Rc<App>,
+    model: Rc<RefCell<ModelRc<StandardListViewItem>>>,
+    path: PathBuf,
+    state: Rc<RefCell<ModelRc<CustomListViewItem>>>
+}
 
-fn center(window_option: Option<&Window>) {
-    if let Some(window) = window_option {
-        window.with_winit_window(|winit_window| {
-            let monitor_size = winit_window.current_monitor().unwrap().size();
+impl Undertasker {
+    pub fn new(
+        app: Rc<App>,
+        model: Rc<RefCell<ModelRc<StandardListViewItem>>>,
+        path: PathBuf,
+        state: Rc<RefCell<ModelRc<CustomListViewItem>>>,
+    ) -> Self {
+        Self { app, model, path, state }
+    }
 
-            let x = (monitor_size.width - 600) / 2;
-            let y = (monitor_size.height - 350) / 2;
-
+    fn center(&self) {
+        self.app.window().with_winit_window(|winit_window| {
+            let monitor = winit_window.current_monitor().unwrap().size();
+            let x = (monitor.width - 600) / 2;
+            let y = (monitor.height - 350) / 2;
             winit_window.set_outer_position(PhysicalPosition::new(x, y));
         });
     }
-}
 
-fn main() -> Result<(), slint::PlatformError> {
-    std::env::set_var("SLINT_BACKEND", "winit-skia");
+    fn add(&self, path: slint::SharedString) {
+        let handle = Rc::downgrade(&self.app);
 
-    let app = App::new()?;
+        if let Some(app) = handle.upgrade() {
+            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+                let item = StandardListViewItem::from(path);
+                model.push(item);
 
-    let handle = app.as_weak();
-    let browse_handle = handle.clone();
-    let save_handle = handle.clone();
-
-    let window = app.window();
-    center(Some(window));
-
-    let model = VecModel::<StandardListViewItem>::default();
-    let command = Rc::new(RefCell::new(ModelRc::new(model)));
-    app.set_list(command.borrow().clone());
-
-    let executable = env::current_exe().expect("Failed to get current executable path");
-
-    let path = executable
-        .parent()
-        .expect("Failed to get executable's parent directory")
-        .join("command.json");
-
-    let commands = Commands::from_file(path.clone()).unwrap();
-
-    for path in commands.file().iter().chain(commands.windows().iter()).chain(commands.terminal().iter()) {
-        if let Some(model) = command.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            let item = StandardListViewItem::from(slint::SharedString::from(path.as_str()));
-            model.push(item);
-        }
-    }
-
-    let is_empty = command
-        .borrow()
-        .as_any().downcast_ref::<VecModel<StandardListViewItem>>()
-        .map_or(true, |model| model.row_count() == 0);
-
-    app.set_is_not_empty(!is_empty);
-
-    let add = command.clone();
-    let clone = handle.clone();
-
-    app.on_add(move |path| {
-        if let Some(model) = add.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            let item = StandardListViewItem::from(StandardListViewItem::from(path));
-            model.push(item);
-
-            if let Some(app) = clone.upgrade() {
                 app.set_is_not_empty(model.row_count() > 0);
 
                 let index = model.row_count() - 1;
@@ -88,19 +64,18 @@ fn main() -> Result<(), slint::PlatformError> {
                 app.set_path(String::new().into());
             }
         }
+    }
 
-    });
+    fn browse(&self) {
+        let handle = Rc::downgrade(&self.app);
 
-    let browse = command.clone();
+        if let Some(app) = handle.upgrade() {
+            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+                if let Some(file) = FileDialog::new().pick_file() {
+                    if let Some(path) = file.to_str() {
+                        let item = StandardListViewItem::from(path);
+                        model.push(item);
 
-    app.on_browse(move || {
-        if let Some(file_path) = FileDialog::new().pick_file() {
-            if let Some(model) = browse.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-                if let Some(path_str) = file_path.to_str() {
-                    let item = StandardListViewItem::from(slint::SharedString::from(path_str));
-                    model.push(item);
-
-                    if let Some(app) = browse_handle.upgrade() {
                         app.set_is_not_empty(model.row_count() > 0);
 
                         let index = model.row_count() - 1;
@@ -115,33 +90,50 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
             }
         }
-    });
+    }
 
-    let remove = command.clone();
+    fn load(&self) {
+        let commands = Commands::from_file(&self.path).unwrap();
 
-    app.on_remove(move || {
-        if let Some(model) = remove.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            let app = handle.unwrap();
-            let index = app.get_index();
-
-            if index >= 0 {
-                model.remove(index as usize);
+        for path in commands.file().iter().chain(commands.windows().iter()).chain(commands.terminal().iter()) {
+            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+                let item = StandardListViewItem::from(slint::SharedString::from(path.as_str()));
+                model.push(item);
             }
-
-            app.set_is_not_empty(model.row_count() > 0);
         }
-    });
+    }
 
-    let save = command.clone();
+    fn remove(&self) {
+        let handle = Rc::downgrade(&self.app);
 
-    app.on_save(move || {
-        let model_rc = save.borrow();
+        if let Some(app) = handle.upgrade() {
+            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+                let index = app.get_index();
 
-        if let Some(model) = model_rc.as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            if let Some(app) = save_handle.upgrade() {
+                if index >= 0 {
+                    model.remove(index as usize);
+                }
+
+                app.set_is_not_empty(model.row_count() > 0);
+            }
+        }
+    }
+
+    fn execute(&self) {
+       if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
+           let commands = command::Commands::from_ui(model);
+           commands.execute();
+       }
+    }
+
+    fn save(&self) {
+        let handle = Rc::downgrade(&self.app);
+
+        if let Some(app) = handle.upgrade() {
+            if let Some(model) = &self.model.borrow().as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
                 let commands = command::Commands::from_ui(model);
 
-                let result = commands.to_disk(path.clone());
+                let result = commands.to_file(self.path.clone());
 
                 if result.is_ok() {
                     app.invoke_show_success();
@@ -150,18 +142,82 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
             }
         }
-    });
+    }
 
-    let run = command.clone();
+    fn register(self: Rc<Self>) {
+        let app = Rc::clone(&self);
 
-    app.on_run(move || {
-        let model_rc = run.borrow();
+        self.app.on_add(move |path| {
+            app.add(path.into());
+        });
 
-        if let Some(model) = model_rc.as_any().downcast_ref::<VecModel<StandardListViewItem>>() {
-            let commands = command::Commands::from_ui(model);
-            commands.execute();
-        }
-    });
+        let app = Rc::clone(&self);
 
-    app.run()
+        self.app.on_browse(move || {
+            app.browse();
+        });
+
+        let app = Rc::clone(&self);
+
+        self.app.on_remove(move || {
+            app.remove();
+        });
+
+        let app = Rc::clone(&self);
+
+        self.app.on_run(move || {
+            app.execute();
+        });
+
+        let app = Rc::clone(&self);
+
+        self.app.on_save(move || {
+            app.save();
+        });
+    }
+
+    fn run(&self) -> Result<(), slint::PlatformError> {
+        let is_empty = &self.model
+            .borrow()
+            .as_any().downcast_ref::<VecModel<StandardListViewItem>>()
+            .map_or(true, |x| x.row_count() == 0);
+
+        let _ = &self.app.set_is_not_empty(!is_empty);
+
+        self.app.run()
+    }
+}
+
+fn main() -> Result<(), slint::PlatformError> {
+    let app = Rc::new(App::new()?);
+
+    let model = VecModel::<StandardListViewItem>::default();
+    let state = VecModel::<CustomListViewItem>::default();
+
+    let state_rc = Rc::new(RefCell::new(ModelRc::new(state)));
+    let model_rc = Rc::new(RefCell::new(ModelRc::new(model)));
+
+    app.set_list(model_rc.borrow().clone());
+
+    let executable = env::current_exe().expect("Failed to get current executable path");
+
+    let path = executable
+        .parent()
+        .expect("Failed to get executable's parent directory")
+        .join("command.json");
+
+    let undertasker = Rc::new(
+        Undertasker::new(
+            app.clone(),
+            model_rc,
+            path,
+            state_rc
+        )
+    );
+
+    undertasker.center();
+    undertasker.load();
+    undertasker.clone().register();
+
+    undertasker.run()
 }
