@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use slint::{Model, StandardListViewItem, VecModel};
+use slint::{Model, VecModel};
 use std::io;
 use std::io::{BufRead, BufReader};
 use std::fs;
@@ -9,12 +9,14 @@ use std::process::Command;
 use std::{thread, time};
 use winapi::um::winbase::{CREATE_NEW_CONSOLE, CREATE_NO_WINDOW, DETACHED_PROCESS};
 
+use crate::model::CustomListViewItem;
+
 
 #[derive(Serialize, Deserialize)]
 pub struct Commands {
     file: Vec<String>,
     windows: Vec<String>,
-    terminal: Vec<String>,
+    terminal: Vec<(String, bool)>,
 }
 
 impl Commands {
@@ -26,7 +28,7 @@ impl Commands {
         &self.windows
     }
 
-    pub fn terminal(&self) -> &[String] {
+    pub fn terminal(&self) -> &[(String, bool)] {
         &self.terminal
     }
 
@@ -38,13 +40,22 @@ impl Commands {
                 .expect("Process could not be spawned.");
         }
 
-        for command in &self.terminal {
-            Command::new("cmd")
-                .arg("/K")
-                .arg(command)
-                .creation_flags(CREATE_NEW_CONSOLE)
-                .spawn()
-                .expect("Process could not be spawned.");
+        for (command, quiet) in &self.terminal {
+            if *quiet {
+                Command::new("cmd")
+                    .arg("/C")
+                    .arg(command)
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .spawn()
+                    .expect("Terminal process could not be spawned.");
+            } else {
+                Command::new("cmd")
+                    .arg("/K")
+                    .arg(command)
+                    .creation_flags(CREATE_NEW_CONSOLE)
+                    .spawn()
+                    .expect("Terminal process could not be spawned.");
+            }
         }
 
         for (iteration, command) in self.windows.iter().enumerate() {
@@ -115,7 +126,7 @@ impl Commands {
 
             commands.file.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
             commands.windows.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
-            commands.terminal.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
+            commands.terminal.sort_by(|(x, _), (y, _)| x.to_lowercase().cmp(&y.to_lowercase()));
 
             Ok(commands)
         }
@@ -129,28 +140,30 @@ impl Commands {
             .map_err(|e| io::Error::new(e.kind(), format!("Failed to write file: {}", e)))
     }
 
-    pub fn from_ui(model: &VecModel<StandardListViewItem>) -> Self {
+    pub fn from_state(model: &VecModel<CustomListViewItem>) -> Self {
         let mut file = Vec::new();
         let mut terminal = Vec::new();
         let mut windows = Vec::new();
 
         for index in 0..model.row_count() {
             if let Some(item) = model.row_data(index) {
-                let command = item.text;
+                let command = item.item.text;
+                let quiet = item.quiet;
 
                 if fs::metadata(&*command).is_ok() {
                     file.push(command.to_string());
                 } else if command.starts_with("start") {
                     windows.push(command.to_string());
                 } else {
-                    terminal.push(command.to_string());
+                    let pair = (command.to_string(), quiet);
+                    terminal.push(pair);
                 }
             }
         }
 
         file.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
         windows.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
-        terminal.sort_by(|x, y| x.to_lowercase().cmp(&y.to_lowercase()));
+        terminal.sort_by(|(x, _), (y, _)| x.to_lowercase().cmp(&y.to_lowercase()));
 
         Commands { file, windows, terminal }
     }
