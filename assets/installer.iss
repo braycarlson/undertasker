@@ -6,6 +6,7 @@
 #define MyAppPublisher "Brayden Carlson"
 #define MyAppURL "https://www.braydencarlson.com"
 #define MyAppExeName "undertasker.exe"
+#define MyAppSourceDir SourcePath + "\.."
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -24,9 +25,9 @@ DisableProgramGroupPage=yes
 UsedUserAreasWarning=no
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
-OutputDir=C:\Users\Brayden\Documents
-OutputBaseFilename=undertasker
-SetupIconFile=E:\code\personal\undertasker\assets\logo.ico
+OutputDir={#MyAppSourceDir}\assets\Output
+OutputBaseFilename=undertasker-setup
+SetupIconFile={#MyAppSourceDir}\assets\logo.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -40,7 +41,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
 
 [Files]
-Source: "E:\code\personal\undertasker\target\release\undertasker.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppSourceDir}\target\release\undertasker.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
@@ -50,4 +51,3 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-

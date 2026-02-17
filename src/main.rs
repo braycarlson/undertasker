@@ -5,14 +5,13 @@ slint::include_modules!();
 mod command;
 mod model;
 
-use i_slint_backend_winit::WinitWindowAccessor;
 use rfd::FileDialog;
 use slint::{Model, ModelRc, StandardListViewItem, VecModel};
+use slint::winit_030::{WinitWindowAccessor, winit};
 use std::cell::RefCell;
 use std::env;
 use std::path::PathBuf;
 use std::rc::Rc;
-use winit::dpi::PhysicalPosition;
 
 use crate::command::Commands;
 use crate::model::CustomListViewItem;
@@ -32,15 +31,6 @@ impl Undertasker {
         state: Rc<RefCell<ModelRc<CustomListViewItem>>>,
     ) -> Self {
         Self { app, model, path, state }
-    }
-
-    fn center(&self) {
-        self.app.window().with_winit_window(|winit_window| {
-            let monitor = winit_window.current_monitor().unwrap().size();
-            let x = (monitor.width - 600) / 2;
-            let y = (monitor.height - 350) / 2;
-            winit_window.set_outer_position(PhysicalPosition::new(x, y));
-        });
     }
 
     fn add(&self, path: slint::SharedString) {
@@ -93,6 +83,35 @@ impl Undertasker {
                 }
             }
         }
+    }
+
+    fn center(&self) {
+        let weak = self.app.as_weak();
+
+        let _ = slint::invoke_from_event_loop(move || {
+            if let Some(app) = weak.upgrade() {
+                let monitor_info = app.window().with_winit_window(|winit_window| {
+                    winit_window.primary_monitor()
+                        .or_else(|| winit_window.current_monitor())
+                        .map(|monitor| (monitor.size(), monitor.position()))
+                });
+
+                if let Some(Some((screen, monitor_position))) = monitor_info {
+                    let size = app.window().size();
+
+                    let x = monitor_position.x
+                        + ((screen.width as i32 - size.width as i32) / 2);
+                    let y = monitor_position.y
+                        + ((screen.height as i32 - size.height as i32) / 2);
+
+                    app.window().set_position(
+                        slint::WindowPosition::Physical(
+                            slint::PhysicalPosition::new(x, y)
+                        )
+                    );
+                }
+            }
+        });
     }
 
     fn load(&self) {
@@ -219,11 +238,24 @@ impl Undertasker {
 
         self.app.set_is_not_empty(!is_empty);
 
-        self.app.run()
+        self.app.show()?;
+        self.center();
+        slint::run_event_loop()?;
+        self.app.hide()?;
+
+        Ok(())
     }
 }
 
 fn main() -> Result<(), slint::PlatformError> {
+    slint::BackendSelector::new()
+        .with_winit_window_attributes_hook(|attributes| {
+            attributes.with_position(
+                winit::dpi::PhysicalPosition::new(-10000i32, -10000i32)
+            )
+        })
+        .select()?;
+
     let app = Rc::new(App::new()?);
 
     let model = VecModel::<StandardListViewItem>::default();
@@ -250,7 +282,6 @@ fn main() -> Result<(), slint::PlatformError> {
         )
     );
 
-    undertasker.center();
     undertasker.load();
     undertasker.clone().register();
 
