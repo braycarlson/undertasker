@@ -1,6 +1,6 @@
 [package]
 name = "undertasker"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Brayden Carlson <braycarlson@hotmail.com>"]
 edition = "2021"
 build = "assets/build.rs"
