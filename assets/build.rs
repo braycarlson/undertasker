@@ -8,8 +8,10 @@ fn main() {
     slint_build::compile_with_config("ui/ui.slint", config).unwrap();
 
     let mut resource = winres::WindowsResource::new();
+
     resource
         .set_icon_with_id("assets/logo.ico", "1000")
         .set("InternalName", "undertasker");
+
     resource.compile().expect("Resource could not be compiled.");
 }
